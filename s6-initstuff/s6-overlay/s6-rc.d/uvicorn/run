@@ -1,0 +1,10 @@
+#!/command/with-contenv /bin/bash
+
+env
+echo "NOT USING THIS ONE ($0)"
+date >> /run/uvicorn_s6_run.lock
+
+exec tail -f /dev/null
+
+# exec 2>&1
+# exec /bin/su - pythonuser -c 'cd /app; env; python3 -m uvicorn webhooks:app --host 0.0.0.0 --port 18889'

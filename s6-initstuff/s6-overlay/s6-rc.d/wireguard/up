@@ -1,0 +1,2 @@
+wg-quick up client1
+#echo UP only one line possible

@@ -1,0 +1,2 @@
+wg-quick down client1
+# echo DOWN only one line possible

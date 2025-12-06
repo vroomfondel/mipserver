@@ -1,0 +1,21 @@
+loguru
+pytz
+types-pytz
+
+pydantic
+pydantic-extra-types
+pydantic-settings
+# email-validator
+
+fastapi
+python-multipart
+
+requests
+
+jinja2
+
+# PyYAML
+ruamel.yaml
+
+mpy-cross
+# types-fastapi

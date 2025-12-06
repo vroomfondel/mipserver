@@ -1,0 +1,24 @@
+UVICORN:
+  port: 18891
+  app: "mipserver:app"
+  host: "0.0.0.0"
+  log_level: "info"
+  reload: true
+
+TIMEZONE: "Europe/Berlin"
+
+MQTT:
+  USERNAME: "funk"
+  PASSWORD: "madina"
+  HOST: "mosquitto.some.where.biz"
+  PORT: 1883
+
+GOTIFY:
+  - APPNAME: "KEEL"
+    BASE_URL: "https://gotify.some.where.biz"
+    BASE_URL_IN_CLUSTER: "http://gotify.gotify.svc.cluster.local:9980"
+    TOKEN: "sometoken1"
+
+PACKAGENAME_TO_GITHUB_REPO:
+  - packagename: "micropysensorbase"
+    githubrepo: "vroomfondel/micropysensorbase"

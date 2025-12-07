@@ -57,8 +57,8 @@ RUN groupadd -g ${GID} -o ${UNAME} && \
 
 USER ${UNAME}
 
-COPY --chown=${UID}:${GID} requirements.txt /
-RUN pip3 install --no-cache-dir --upgrade -r /requirements.txt
+COPY --chown=${UID}:${GID} requirements.txt requirements-local.txt /
+RUN pip3 install --no-cache-dir --upgrade -r /requirements-local.txt
 
 COPY --chown=${UID}:${GID} mipserver /app/mipserver
 COPY --chown=${UID}:${GID} main.py /app/

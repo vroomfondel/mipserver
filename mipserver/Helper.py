@@ -14,7 +14,6 @@ import hashlib
 
 
 import requests
-from isort.hooks import git_hook
 from loguru import logger
 
 from mipserver.datastructures.datatypes import MPYPath

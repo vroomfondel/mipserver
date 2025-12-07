@@ -7,7 +7,7 @@ FROM python:3.13-bookworm
 
 RUN apt update && \
     apt -y full-upgrade && \
-    apt -y install htop procps iputils-ping python3-pdfminer locales vim tini fonts-noto-core bind9-dnsutils && \
+    apt -y install htop procps iputils-ping python3-pdfminer locales vim tini fonts-noto-core bind9-dnsutils acl && \
     pip install --upgrade pip && \
     rm -rf /var/lib/apt/lists/*
 
@@ -90,6 +90,8 @@ ENV FORWARDED_ALLOW_IPS=$forwarded_allow_ips
 # ENV TINI_SUBREAPER=yes
 # ENV TINI_KILL_PROCESS_GROUP=yes
 # ENV TINI_VERBOSITY=3
+
+ENV PATH="/home/pythonuser/.local/bin:$PATH"
 
 EXPOSE 18891
 

@@ -14,7 +14,7 @@ requests
 
 jinja2
 
-# PyYAML
+PyYAML
 ruamel.yaml
 
 mpy-cross

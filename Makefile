@@ -41,8 +41,19 @@ lint: venv
 	black -l 120 .
 
 dstart:
-	# map config.local.yaml from current workdirectory into container
-	docker run --network=host -it --rm --name mipserverephemeral -p 18891:18891 -v $(pwd)/mipserver/config.local.yaml:/app/mipserver/config.local.yaml xomoxcc/mipserver:latest
+	@# map config.local.yaml from current workdirectory into container
+	@if ! [ -e .cache ]; then echo creating .cache ; mkdir .cache ; else echo already exists .cache; fi
+	@echo "Setting ACLs for host user $$(id -u):$$(id -g)"
+	@setfacl -R -m u:$$(id -u):rwx,g:$$(id -g):rwx -d -m u:$$(id -u):rwx,g:$$(id -g):rwx .cache
+	@echo "Setting ACLs for container user 1200:1201"
+	@setfacl -R -m u:1200:rwx,g:1201:rwx -d -m u:1200:rwx,g:1201:rwx .cache
+	docker run --network=host -it --rm --name mipserverephemeral -p 18891:18891 \
+		-v $$(pwd)/mipserver/config.local.yaml:/app/mipserver/config.local.yaml \
+		-v $$(pwd)/.cache:/app/.cache \
+		xomoxcc/mipserver:latest
+
+# or run with current userid
+# docker run --user $(id -u):$(id -g) --network=host -it --rm --name mipserverephemeral -p 18891:18891 -v $(pwd)/mipserver/config.local.yaml:/app/mipserver/config.local.yaml -v $(pwd)/.cache:/app/.cache xomoxcc/mipserver:latest
 
 isort: venv
 	@$(venv_activated)

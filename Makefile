@@ -50,7 +50,8 @@ isort: venv
 
 tcheck: venv
 	@$(venv_activated)
-	mypy *.py ecowittstuff/*py llmstuff/*.py mqttstuff/*.py dnsstuff/*.py netatmostuff/*.py hydromailstuff/*.py
+	mypy *.py mipserver
+	# mypy -v *.py mipserver  2> >(grep "Found source") | sed "s_.*path='\(.*\)py'.*_\1py_"
     # mypy *.py **/*.py
 
 build: venv

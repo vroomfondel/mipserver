@@ -1,5 +1,7 @@
 # mipserver
 
+![Cumulative Clones](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
+
 something to be used to update micropython via mip - something like a local proxy for that - something mpy-cross on-the-fly-compiling-thingy
 
 see also: https://github.com/vroomfondel/micropysensorbase for usage

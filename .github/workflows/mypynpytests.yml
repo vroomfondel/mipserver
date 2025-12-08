@@ -48,5 +48,4 @@ jobs:
         run: make tcheck
 
       - name: run pytest
-        # run: make tests
-        run: pytest .
+        run: make tests

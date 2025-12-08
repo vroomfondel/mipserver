@@ -43,6 +43,7 @@ lint: venv
 dstart:
 	@# map config.local.yaml from current workdirectory into container
 	@if ! [ -e .cache ]; then echo creating .cache ; mkdir .cache ; else echo already exists .cache; fi
+	@if ! [ -e mipserver/config.local.yaml ] ; then creating empty mipserver/config.local.yaml ; touch mipserver/config.local.yaml ; fi
 	@echo "Setting ACLs for host user $$(id -u):$$(id -g)"
 	@setfacl -R -m u:$$(id -u):rwx,g:$$(id -g):rwx -d -m u:$$(id -u):rwx,g:$$(id -g):rwx .cache
 	@echo "Setting ACLs for container user 1200:1201"

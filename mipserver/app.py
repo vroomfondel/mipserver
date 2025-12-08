@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager, contextmanager
 
 from os import stat_result
 from pathlib import Path
-from typing import Annotated, List, Any, Dict, Union, AsyncGenerator, Generator
+from typing import Annotated, List, Any, Dict, Union, AsyncGenerator, Generator, Optional
 
 from mipserver.config import settings
 
@@ -47,11 +47,15 @@ def error_response(error_msg: str, status_code: int = 500) -> JSONResponse:
     error = ErrorResponse(error=error_msg)
     return JSONResponse(content=error.model_dump(), status_code=status_code)
 
-package_name_to_repo: Dict[str, str] = {
+PACKAGE_NAME_TO_REPO: Dict[str, str] = {
     # "micropysensorbase": "vroomfondel/micropysensorbase"
     png.packagename: png.githubrepo for png in settings.packagename_to_github_repo.root
 }
 
+def get_package_name_to_repo() -> Dict[str, str]:
+    """Dependency function to inject package_name_to_repo dictionary"""
+    logger.debug("app::get_package_name_to_repo")
+    return PACKAGE_NAME_TO_REPO
 
 # from .datastructures.models import Sensor, Location
 
@@ -139,7 +143,7 @@ def is_in_cluster() -> bool:
 async def root() -> Dict:
     return {"message": "Hello World"}
 
-def do_request_log(request: Request, **kwargs: Any) -> Dict:
+def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     hs: Headers = request.headers
     request_url = str(request.url)
 
@@ -158,25 +162,26 @@ def do_request_log(request: Request, **kwargs: Any) -> Dict:
     remote_ip: str = request.client.host
     heads: dict = {}
 
-    if "file_path" in kwargs:
-        file_path = kwargs["file_path"]
-        logger.debug(f"{type(file_path)=} {file_path=}")
+    if kwargs:
+        if "file_path" in kwargs:
+            file_path = kwargs["file_path"]
+            # logger.debug(f"{type(file_path)=} {file_path=}")
 
     for hk in hs.keys():
-        logger.debug(f"RequestHeader[{hk}]: {hs.get(hk)}")
+        # logger.debug(f"RequestHeader[{hk}]: {hs.get(hk)}")
         heads[hk] = hs.get(hk)
 
-    logger.debug(f"request.url = {request.url}")
-    logger.debug(f"request.url.port = {request.url.port}")
-    logger.debug(f"request.url.hostname = {request.url.hostname}")
-    logger.debug(f"request.url.scheme = {request.url.scheme}")
-    logger.debug(f"request.url.netloc = {request.url.netloc}")
-    logger.debug(f"Host header = {hs.get('host')}")
+    # logger.debug(f"request.url = {request.url}")
+    # logger.debug(f"request.url.port = {request.url.port}")
+    # logger.debug(f"request.url.hostname = {request.url.hostname}")
+    # logger.debug(f"request.url.scheme = {request.url.scheme}")
+    # logger.debug(f"request.url.netloc = {request.url.netloc}")
+    # logger.debug(f"Host header = {hs.get('host')}")
 
     # Hole Port aus ASGI Scope
     server_info = request.scope.get('server')
 
-    logger.debug(f"request.scope = {server_info}")
+    # logger.debug(f"request.scope = {server_info}")
 
     server_host = None
     server_port = None
@@ -218,12 +223,22 @@ def do_request_log(request: Request, **kwargs: Any) -> Dict:
 
 
 @app.get('/echo')
-async def root_e(request: Request, **kwargs: Any) -> Dict:
-    ret: Dict = do_request_log(request, **kwargs)
+async def echo(request: Request) -> Dict:
+    logger.debug("RECEIVED REQUEST")
+
+    query_params: Dict[str, str] = dict(request.query_params)
+
+    ret: Dict = do_request_log(request, **query_params)
+
+    ret["query_params"] = query_params
+
+    logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
     return ret
 
 # package = "{}/package/{}/{}/{}.json".format(index, mpy_version, package, version)
 # return _install_json(package, index, target, version, mpy)
+
+
 
 @app.get("/package/{mpy_version:str}/{package_name:str}/{pversion}.json",
          response_model=MIPServerPackageJson,
@@ -232,10 +247,11 @@ async def root_e(request: Request, **kwargs: Any) -> Dict:
 async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
                            package_name: Annotated[str, FPath(..., min_length=3, max_length=100)],
                            pversion: Annotated[str, FPath(..., min_length=3, max_length=64)],
+                           package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
                            request: Request) -> MIPServerPackageJson | Response:
 
     ret: Dict = do_request_log(request, package_name=package_name, mpy_version=mpy_version.value, pversion=pversion)
-    logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
+    # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
 
     # mpy_version: "py" or mpy-file-version (.e.g. "6")
     # pversion: "latest" or "1.5.0" or whatever -> this actually means the branch and not a tag/version on the main/master-branch; in case of "latest", it is the main branch
@@ -245,6 +261,9 @@ async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
     # - If requested file is not present under server root, try downloading from GitHub
     # - If .mpy is requested, compile from corresponding .py on the fly using mpy-cross
     # - If a .json is requested and not present, generate a simple packages listing JSON
+
+    for k, v in package_name_to_repo.items():
+        logger.debug(f"{k=} => {v=}")
 
     msh: MIPServerHelper = MIPServerHelper(server_cache_root=SERVER_CACHE_ROOT, package_name_to_repo=package_name_to_repo)
 
@@ -286,13 +305,14 @@ async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
 @app.get("/file/{short_hash_2:str}/{short_hash:str}")
 async def get_file(request: Request,
     short_hash_2: Annotated[str, FPath(..., min_length=2, max_length=2)], # pattern="^[a-fA-F0-9]{2}$"),
-    short_hash:  Annotated[str, FPath(..., min_length=64, max_length=64)]) -> Response:
+    short_hash:  Annotated[str, FPath(..., min_length=64, max_length=64)],
+    package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)]) -> Response:
 
     ret: Dict = do_request_log(request, short_hash_2=short_hash_2, short_hash=short_hash)
 
     assert short_hash_2 == short_hash[:2]
 
-    logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
+    # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
 
     msh: MIPServerHelper = MIPServerHelper(server_cache_root=SERVER_CACHE_ROOT,
                                            package_name_to_repo=package_name_to_repo)
@@ -314,6 +334,7 @@ async def get_file(request: Request,
 
 @app.get("/{whatever:path}")
 async def whatever(whatever: Annotated[str, FPath(...)], request: Request) -> Response:
+    logger.debug("WHATEVER")
     ret: Dict = do_request_log(request, whatever=whatever)
 
     logger.debug(Helper.get_pretty_dict_json_no_sort(ret))

@@ -8,6 +8,8 @@ black==25.11.*
 mypy==1.18.*
 
 pytest==8.3.*
+# needed for pytest
+httpx
 
 # local black-connect-daemon
 #aiohttp==3.11.*
@@ -18,3 +20,4 @@ types-python-dateutil==2.9.*
 types-pytz>=2025.2
 types-cachetools
 types-requests>=2.32.4.20250913
+

@@ -34,7 +34,7 @@ venv: .venv/touchfile
 
 tests: venv
 	@$(venv_activated)
-	pytest .
+	pytest -v .
 
 lint: venv
 	@$(venv_activated)

@@ -1,6 +1,6 @@
 UVICORN:
   port: 18891
-  app: "mipserver:app"
+  app: "mipserver.app:app"
   host: "0.0.0.0"
   log_level: "info"
   reload: true

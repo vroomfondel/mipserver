@@ -1,11 +1,114 @@
-# Test your FastAPI endpoints
+@host = http://127.0.0.1:18891
 
-GET http://127.0.0.1:8000/
+# Root endpoint
+# @no-log
+GET {{host}}/
 Accept: application/json
 
 ###
 
-GET http://127.0.0.1:8000/hello/User
+# Echo endpoint – shows request info; set a custom header and query param
+GET {{host}}/echo?x=1
+Accept: application/json
+X-Custom: abc
+
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200);
+    });
+
+    client.test("Response has content-type JSON", function() {
+        client.assert(response.contentType.mimeType === "application/json");
+    });
+
+    client.test("Response body is JSON object/dict", function() {
+        client.assert(typeof response.body === "object" && !Array.isArray(response.body) && response.body !== null, "Body is not a JSON object");
+    });
+
+    client.test("Echo returns query parameter", function() {
+        let params = response.body.query_params;
+        client.assert(params.x === "1", "Query param x is not 1");
+    });
+
+    client.test("Echo returns custom header", function() {
+        let headers = response.body.headers;
+        client.assert(headers["x-custom"] === "abc", "Custom header not found");
+    });
+
+    /*
+    client.test("Response body contains expected field", function() {
+        client.assert(response.body.hasOwnProperty("some_field"), "Field missing");
+    });
+    */
+
+    /* Wert aus Response in Variable speichern
+    client.global.set("extracted_hash", response.body.files[0].hash);
+    client.log("Extracted hash: " + client.global.get("extracted_hash"));
+    */
+%}
+###
+
+# Package JSON endpoint – adjust variables to match your repo mapping
+@mpy_version = 6
+@package_name = micropysensorbase
+@package_version = latest
+GET {{host}}/package/{{mpy_version}}/{{package_name}}/{{package_version}}.json
 Accept: application/json
 
+> {%
+    client.test("Request executed successfully", function() {
+        client.assert(response.status === 200);
+    });
+
+    client.test("Response has content-type JSON", function() {
+        client.assert(response.contentType.mimeType === "application/json");
+    });
+
+    client.test("Response body contains expected field", function() {
+        
+        client.assert(response.body.hasOwnProperty("hashes"), "Field missing");
+    });
+
+    client.test("Response body is JSON object/dict", function() {
+        client.assert(typeof response.body === "object" && !Array.isArray(response.body) && response.body !== null, "Body is not a JSON object");
+    });
+
+    /*
+    client.test("Response body contains expected field", function() {
+        client.assert(response.body.hasOwnProperty("some_field"), "Field missing");
+    });
+    */
+
+    /* Wert aus Response in Variable speichern
+    client.global.set("extracted_hash", response.body.files[0].hash);
+    client.log("Extracted hash: " + client.global.get("extracted_hash"));
+    */
+%}
+
 ###
+
+# File endpoint – requires valid hashes from a package json response
+# Replace short_hash_2 (first 2 chars) and short_hash (64 chars) accordingly
+@short_hash = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+@short_hash_2 = 01
+GET {{host}}/file/{{short_hash_2}}/{{short_hash}}
+Accept: */*
+
+###
+
+# Catch-all path (will return plain text echo of the path)
+GET {{host}}/some/unknown/path
+Accept: text/plain
+
+###
+
+# Verfügbare Objekte im Response Handler
+#response.status - HTTP Status Code
+#response.headers - Response Headers
+#response.body - Parsed Response Body (JSON wird automatisch geparst)
+#response.contentType - Content-Type Informationen
+#response.responseTime - Response Zeit in Millisekunden
+#client.global - Globale Variablen (über Requests hinweg)
+#client.test() - Test definieren
+#client.assert() - Assertion durchführen
+#client.log() - In Test-Console loggen

@@ -1,8 +1,6 @@
 import os
 import json
 
-print("update_badge.py::BEFORE IMPORTS")
-
 def install_and_import(packagename: str, pipname: str) -> None:
     import importlib
     try:
@@ -13,14 +11,9 @@ def install_and_import(packagename: str, pipname: str) -> None:
     finally:
         globals()[packagename] = importlib.import_module(packagename)
 
-
-print("update_badge.py::AFTER IMPORTS")
 install_and_import(packagename="github", pipname="pygithub")
-print("update_badge.py::AFTER github install_and_import")
 
 from github import Github, InputFileContent, Clones, Auth
-
-print("update_badge.py::AFTER github explicit from import")
 
 def main() -> None:
     print("update_badge.py::main()")
@@ -30,8 +23,6 @@ def main() -> None:
     gist_id = os.environ["GIST_ID"]
     repo_token = os.environ["REPO_TOKEN"]
     repo_name = os.environ["GITHUB_REPOSITORY"]  # needs full repo-name with username e.g. vroomfondel/mipserver
-
-    print(f"{repo_name=}")
 
     history_filename = "mipserver_clone_history.json"
     badge_filename = "mipserver_clone_count.json"

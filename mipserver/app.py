@@ -9,6 +9,7 @@ from mipserver.config import settings
 
 import datetime
 from fastapi import FastAPI, Header, Query, Body, Depends
+
 # fastapi. used here is only a wrapper to starlette.
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -42,20 +43,25 @@ SERVER_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
 # git@github.com:vroomfondel/micropysensorbase.git
 # https://github.com/vroomfondel/micropysensorbase.git
 
+
 def error_response(error_msg: str, status_code: int = 500) -> JSONResponse:
     """Helper um ErrorResponse Models als JSONResponse zurückzugeben"""
     error = ErrorResponse(error=error_msg)
     return JSONResponse(content=error.model_dump(), status_code=status_code)
 
+
 PACKAGE_NAME_TO_REPO: Dict[str, str] = {
     # "micropysensorbase": "vroomfondel/micropysensorbase"
-    png.packagename: png.githubrepo for png in settings.packagename_to_github_repo.root
+    png.packagename: png.githubrepo
+    for png in settings.packagename_to_github_repo.root
 }
+
 
 def get_package_name_to_repo() -> Dict[str, str]:
     """Dependency function to inject package_name_to_repo dictionary"""
     logger.debug("app::get_package_name_to_repo")
     return PACKAGE_NAME_TO_REPO
+
 
 # from .datastructures.models import Sensor, Location
 
@@ -90,6 +96,7 @@ __app_tags_metadata: List[dict[str, Any]] | None = [
     },
 ]
 
+
 # from fastapi.responses import ORJSONResponse
 # app = FastAPI(default_response_class=ORJSONResponse)
 @contextmanager
@@ -102,12 +109,14 @@ def mylifespan_sync(_app: FastAPI) -> Generator[None, None]:
     # TODO cleanup
     logger.debug(f"{title}::mylifespan::AFTER yield -> cleanup...")
 
+
 @asynccontextmanager
 async def mylifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Async wrapper für den synchronen Context-Manager"""
     # also, mypy does not know, FastAPI can also digest sync-contextmanager... BLARGH!
     with mylifespan_sync(_app):
         yield
+
 
 app = FastAPI(
     lifespan=mylifespan,
@@ -125,7 +134,6 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
     openapi_tags=__app_tags_metadata,
-
 )
 
 # @app.exception_handler(RequestValidationError)
@@ -133,15 +141,18 @@ app = FastAPI(
 #     print(f"OMG! The client sent invalid data!: {exc}")
 #     return await request_validation_exception_handler(request, exc)
 
+
 def is_in_cluster() -> bool:
     sa: Path = Path("/var/run/secrets/kubernetes.io/serviceaccount")
     if sa.exists() and sa.is_dir():
         return os.getenv("KUBERNETES_SERVICE_HOST") is not None
     return False
 
+
 @app.get("/")
 async def root() -> Dict:
     return {"message": "Hello World"}
+
 
 def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     hs: Headers = request.headers
@@ -155,7 +166,6 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     request_url_with_port = f"{scheme}://{hostname}:{port}{request.url.path}"
     if request.url.query:
         request_url_with_port += f"?{request.url.query}"
-
 
     path: str = request.url.path
     assert request.client is not None, "request.client is None and that is not allowed here..."
@@ -179,7 +189,7 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     # logger.debug(f"Host header = {hs.get('host')}")
 
     # Hole Port aus ASGI Scope
-    server_info = request.scope.get('server')
+    server_info = request.scope.get("server")
 
     # logger.debug(f"request.scope = {server_info}")
 
@@ -193,7 +203,7 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
 
     # Baue URL mit korrektem Port
     scheme = request.url.scheme
-    hostname = request.url.hostname or server_host if server_info else 'localhost'
+    hostname = request.url.hostname or server_host if server_info else "localhost"
     port = request.url.port or server_port
 
     if port:
@@ -215,14 +225,14 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
             "hostname": request.url.hostname,
             "netloc": request.url.netloc,
             "scheme": request.url.scheme,
-            },
-        "server_scope": request.scope.get('server'),
+        },
+        "server_scope": request.scope.get("server"),
     }
 
     return ret
 
 
-@app.get('/echo')
+@app.get("/echo")
 async def echo(request: Request) -> Dict:
     logger.debug("RECEIVED REQUEST")
 
@@ -235,20 +245,23 @@ async def echo(request: Request) -> Dict:
     logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
     return ret
 
+
 # package = "{}/package/{}/{}/{}.json".format(index, mpy_version, package, version)
 # return _install_json(package, index, target, version, mpy)
 
 
-
-@app.get("/package/{mpy_version:str}/{package_name:str}/{pversion}.json",
-         response_model=MIPServerPackageJson,
-         responses={500: {"model": ErrorResponse}}
-         )
-async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
-                           package_name: Annotated[str, FPath(..., min_length=3, max_length=100)],
-                           pversion: Annotated[str, FPath(..., min_length=3, max_length=64)],
-                           package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
-                           request: Request) -> MIPServerPackageJson | Response:
+@app.get(
+    "/package/{mpy_version:str}/{package_name:str}/{pversion}.json",
+    response_model=MIPServerPackageJson,
+    responses={500: {"model": ErrorResponse}},
+)
+async def get_package_json(
+    mpy_version: Annotated[MPYPath, FPath(...)],
+    package_name: Annotated[str, FPath(..., min_length=3, max_length=100)],
+    pversion: Annotated[str, FPath(..., min_length=3, max_length=64)],
+    package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
+    request: Request,
+) -> MIPServerPackageJson | Response:
 
     ret: Dict = do_request_log(request, package_name=package_name, mpy_version=mpy_version.value, pversion=pversion)
     # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
@@ -265,17 +278,20 @@ async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
     for k, v in package_name_to_repo.items():
         logger.debug(f"{k=} => {v=}")
 
-    msh: MIPServerHelper = MIPServerHelper(server_cache_root=SERVER_CACHE_ROOT, package_name_to_repo=package_name_to_repo)
+    msh: MIPServerHelper = MIPServerHelper(
+        server_cache_root=SERVER_CACHE_ROOT, package_name_to_repo=package_name_to_repo
+    )
 
-    reponame: str|None = msh.get_reponame_by_packagename(package_name)
+    reponame: str | None = msh.get_reponame_by_packagename(package_name)
     if not reponame:
         return error_response("cannot generate package -> invalid packagename")
 
-
-    logger.debug(f"MIP::get_package_json request for \"/package/{mpy_version}/{package_name}/{pversion}.json\"")
+    logger.debug(f'MIP::get_package_json request for "/package/{mpy_version}/{package_name}/{pversion}.json"')
 
     # JSON handling
-    local_json = msh.get_local_path_for_package_json_by_package_and_version(mpy_version=mpy_version, package_name=package_name, pversion=pversion)
+    local_json = msh.get_local_path_for_package_json_by_package_and_version(
+        mpy_version=mpy_version, package_name=package_name, pversion=pversion
+    )
 
     thirty_minutes_ago: datetime.datetime = datetime.datetime.now() - datetime.timedelta(minutes=30)
 
@@ -283,17 +299,23 @@ async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
         lms: stat_result = local_json.stat()
 
         if lms.st_ctime >= thirty_minutes_ago.timestamp():
-            logger.debug(f"\tReturning {local_json=} from {datetime.datetime.fromtimestamp(lms.st_ctime, settings.timezone)}")
+            logger.debug(
+                f"\tReturning {local_json=} from {datetime.datetime.fromtimestamp(lms.st_ctime, settings.timezone)}"
+            )
             return FileResponse(local_json, media_type="application/json")
 
     logger.debug(f"Have to check for updates on git...")
-    gitrepopath: Path|None = msh.ensure_git_repo_up_to_date(repo_name=reponame, branch=pversion)  # pversion sollte meist "latest" sein
+    gitrepopath: Path | None = msh.ensure_git_repo_up_to_date(
+        repo_name=reponame, branch=pversion
+    )  # pversion sollte meist "latest" sein
 
     if not gitrepopath:
         return error_response("cannot generate package -> git pull failed")
 
     logger.debug(f"Trying to generate package_json from locally existing github...")
-    local_json = msh.generate_package_json_from_local_repo(gitrepopath=gitrepopath, target_pkgjson=local_json, mpy_version=mpy_version)
+    local_json = msh.generate_package_json_from_local_repo(
+        gitrepopath=gitrepopath, target_pkgjson=local_json, mpy_version=mpy_version
+    )
     if local_json.exists():
         logger.debug(f"\tReturning freshly created {local_json=}")
         return FileResponse(local_json, media_type="application/json")
@@ -303,10 +325,12 @@ async def get_package_json(mpy_version: Annotated[MPYPath, FPath(...)],
 
 # file_url = "{}/file/{}/{}".format(index, short_hash[:2], short_hash)
 @app.get("/file/{short_hash_2:str}/{short_hash:str}")
-async def get_file(request: Request,
-    short_hash_2: Annotated[str, FPath(..., min_length=2, max_length=2)], # pattern="^[a-fA-F0-9]{2}$"),
-    short_hash:  Annotated[str, FPath(..., min_length=64, max_length=64)],
-    package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)]) -> Response:
+async def get_file(
+    request: Request,
+    short_hash_2: Annotated[str, FPath(..., min_length=2, max_length=2)],  # pattern="^[a-fA-F0-9]{2}$"),
+    short_hash: Annotated[str, FPath(..., min_length=64, max_length=64)],
+    package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
+) -> Response:
 
     ret: Dict = do_request_log(request, short_hash_2=short_hash_2, short_hash=short_hash)
 
@@ -314,12 +338,13 @@ async def get_file(request: Request,
 
     # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
 
-    msh: MIPServerHelper = MIPServerHelper(server_cache_root=SERVER_CACHE_ROOT,
-                                           package_name_to_repo=package_name_to_repo)
+    msh: MIPServerHelper = MIPServerHelper(
+        server_cache_root=SERVER_CACHE_ROOT, package_name_to_repo=package_name_to_repo
+    )
 
     rel = f"files/{short_hash_2}/{short_hash}"
 
-    retfile: Path|None = msh.get_local_path_for(rel)
+    retfile: Path | None = msh.get_local_path_for(rel)
 
     if not retfile:
         return error_response(f"File error (not pathable): {rel}")

@@ -20,10 +20,9 @@ class MPYPath(StrEnum):
 #     def _generate_next_value_(name, start, count, last_values):
 #         return name.lower()
 
+
 class SensorType(StrEnum):
     lupus = auto()
     tasmota = auto()
     reolink = auto()
     esp = auto()
-
-

@@ -17,8 +17,13 @@ import requests
 from loguru import logger
 
 from mipserver.datastructures.datatypes import MPYPath
-from mipserver.datastructures.models import MIPServerFile, MIPServerPackageJson, MIPSRCPackageJson, \
-    MIPSRCPackageURLEntry, MIPServerFileL
+from mipserver.datastructures.models import (
+    MIPServerFile,
+    MIPServerPackageJson,
+    MIPSRCPackageJson,
+    MIPSRCPackageURLEntry,
+    MIPServerFileL,
+)
 
 
 def get_sha256_hash(srcfile: Path) -> str:
@@ -30,10 +35,9 @@ def get_sha256_hash(srcfile: Path) -> str:
     if not srcfile.is_file():
         raise Exception(f"File does not denote a regular file: {srcfile.resolve().absolute()}")
 
-
     sha256 = hashlib.sha256()
 
-    with open(srcfile, 'rb') as f:
+    with open(srcfile, "rb") as f:
         while True:
             data: bytes = f.read(buf_size)
             if not data:
@@ -44,6 +48,7 @@ def get_sha256_hash(srcfile: Path) -> str:
     logger.debug(f"SHA256({srcfile.resolve().absolute()}): {ret}")
     return ret
 
+
 def copy_file(srcfile: Path, tgtfile: Path) -> None:
     buf_size: int = 65_536
 
@@ -53,15 +58,13 @@ def copy_file(srcfile: Path, tgtfile: Path) -> None:
     if not srcfile.is_file():
         raise Exception(f"File does not denote a regular file: {srcfile.resolve().absolute()}")
 
-    with open(srcfile, 'rb') as fin:
+    with open(srcfile, "rb") as fin:
         with open(tgtfile, "wb") as fout:
             while True:
                 data: bytes = fin.read(buf_size)
                 if not data:
                     break
                 fout.write(data)
-
-
 
 
 class ComplexEncoder(json.JSONEncoder):
@@ -143,6 +146,7 @@ def get_exception_tb_as_string(exc: Exception) -> str:
 
     return tbs
 
+
 class MIPServerHelper:
     logger = logger.bind(classname=__qualname__)
 
@@ -160,25 +164,26 @@ class MIPServerHelper:
         # Use repository root as server-root as per issue description
         return self.server_cache_root
 
-
     def get_local_path_for(self, file_path: Union[str, Path]) -> Path:
-        p = self.get_server_cache_root() / Path(str(file_path)).as_posix().lstrip('/')
+        p = self.get_server_cache_root() / Path(str(file_path)).as_posix().lstrip("/")
         return p
 
-    def get_local_path_for_package_json_by_package_and_version(self, mpy_version: str, package_name: str, pversion: str) -> Path:
+    def get_local_path_for_package_json_by_package_and_version(
+        self, mpy_version: str, package_name: str, pversion: str
+    ) -> Path:
         rel: str = f"{mpy_version}/{package_name}/{pversion}.json"
         p = self.get_local_path_for(rel)
         return p
 
-
-    def get_reponame_by_packagename(self, package_name: str) -> str|None:
+    def get_reponame_by_packagename(self, package_name: str) -> str | None:
         return self.package_name_to_repo.get(package_name)
 
-
     @staticmethod
-    def generate_package_json_from_local_repo(gitrepopath: Path, target_pkgjson: Path, mpy_version: MPYPath = MPYPath.six) -> Path:
+    def generate_package_json_from_local_repo(
+        gitrepopath: Path, target_pkgjson: Path, mpy_version: MPYPath = MPYPath.six
+    ) -> Path:
         src_pkgjson: Path = Path(gitrepopath, "package.json")
-        assert gitrepopath.exists() and gitrepopath.is_dir() and  src_pkgjson.exists()
+        assert gitrepopath.exists() and gitrepopath.is_dir() and src_pkgjson.exists()
 
         srcdata: dict
         with open(src_pkgjson, "r") as fin:
@@ -207,20 +212,21 @@ class MIPServerHelper:
                 continue
 
             if src_from_file.name.endswith(".py") and mpy_version.value != "py":
-                return_target = src_from[:-2]+"mpy"
+                return_target = src_from[:-2] + "mpy"
                 return_file = Path(src_from_file.parent, src_from_file.stem + ".mpy")
                 # return_file = Path(target_pkgjson.parent, src_from_file.stem + ".mpy")
 
                 logger.debug(f"Compile on the fly from {src_from_file.absolute()} to {return_file.absolute()}")
                 logger.debug(f"\tsetting {src_from=} to {return_target=}")
 
-                compile_ok: bool = MIPServerHelper.compile_mpy(py_path=src_from_file, mpy_out=return_file, py_src_name=src_from)
+                compile_ok: bool = MIPServerHelper.compile_mpy(
+                    py_path=src_from_file, mpy_out=return_file, py_src_name=src_from
+                )
 
                 if not compile_ok:
                     raise Exception(f"Compilation from {src_from_file=} to {return_file=}")
 
                 logger.debug(f"Compilation OK for {return_file=}")
-
 
             myhash: str = get_sha256_hash(return_file)
             mysize: int = return_file.stat().st_size
@@ -233,20 +239,11 @@ class MIPServerHelper:
 
             copy_file(return_file, return_file_in_index_dir)
 
-            msf: MIPServerFile = MIPServerFile(
-                path=return_target,
-                hash=myhash,
-                size=mysize
-            )
+            msf: MIPServerFile = MIPServerFile(path=return_target, hash=myhash, size=mysize)
             myfiles.append(msf)
 
-            msfl: MIPServerFileL = MIPServerFileL(
-                path=return_target,
-                hash=myhash
-            )
+            msfl: MIPServerFileL = MIPServerFileL(path=return_target, hash=myhash)
             myhashes.append(msfl)
-
-
 
         # TODO not really nexessary to include "files" here -> there was some "irritating" documentation floating around...
         # mpj: MIPServerPackageJson = MIPServerPackageJson(files=myfiles, hashes=myhashes)
@@ -261,7 +258,6 @@ class MIPServerHelper:
         logger.debug(f"Written {fstat.st_size} bytes to {target_pkgjson.resolve().absolute()}")
 
         return target_pkgjson
-
 
     @staticmethod
     def download_from_github(repo_name: str, raw_rel_path: str) -> bytes | None:
@@ -278,7 +274,6 @@ class MIPServerHelper:
         logger.warning(f"GitHub fetch failed {resp.status_code} for {url}")
         return None
 
-
     @staticmethod
     def compile_mpy(py_path: Path, mpy_out: Path, py_src_name: str) -> bool:
         mpy_cross = shutil.which("mpy-cross") or shutil.which("mpy-cross-static")
@@ -292,8 +287,7 @@ class MIPServerHelper:
             # Basic compile, optimization level 2
             cmd = [mpy_cross, "-O2", str(py_path), "-o", str(mpy_out), "-s", py_src_name]
             logger.debug(f"compile_mpy::{cmd=}")
-            res = subprocess.run(cmd, capture_output=True, text=True,
-                                 timeout=120)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if res.returncode != 0:
                 logger.error(f"mpy-cross failed: rc={res.returncode} stderr={res.stderr}")
                 return False
@@ -301,7 +295,6 @@ class MIPServerHelper:
         except Exception as e:
             logger.opt(exception=e).error("mpy-cross execution error")
             return False
-
 
     def ensure_files_in_structure_from_repo(self, repo_name: str, branch: str = GITHUB_DEFAULT_BRANCH) -> Path | None:
         ...
@@ -349,10 +342,7 @@ class MIPServerHelper:
 
                 cmd = [git_bin, "clone", "--depth", "1", "--branch", git_branch, repo_url, str(checkout_dir)]
                 logger.debug(f"EXEC {cmd}")
-                res = subprocess.run(
-                    cmd,
-                    capture_output=True, text=True, timeout=300
-                )
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
                 if res.returncode != 0:
                     logger.error(f"git clone failed: {res.returncode} stderr={res.stderr}")
                     return None
@@ -376,11 +366,13 @@ class MIPServerHelper:
 
         return checkout_dir
 
-
-    def ensure_local_file(self, repo_name: str,
-                           raw_rel_path: str,
-                           branch: str = GITHUB_DEFAULT_BRANCH,
-                           allow_https_download_fallback: bool = False) -> Path | None:
+    def ensure_local_file(
+        self,
+        repo_name: str,
+        raw_rel_path: str,
+        branch: str = GITHUB_DEFAULT_BRANCH,
+        allow_https_download_fallback: bool = False,
+    ) -> Path | None:
         """Ensure a file relative to repository root exists locally under server-root.
 
         Try to source it from a cached git checkout (updated via clone/pull). If that fails

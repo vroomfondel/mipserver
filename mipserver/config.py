@@ -17,9 +17,7 @@ from pydantic_core.core_schema import ValidationInfo
 
 os.environ["LOGURU_LEVEL"] = os.getenv("LOGURU_LEVEL", "DEBUG")  # standard is DEBUG
 logger.remove()  # remove default-handler
-logger_fmt: str = (
-    "<g>{time}</> | <lvl>{level}</> | <c>{extra[classname]}:{function}:{line}</> - {message}"
-)
+logger_fmt: str = "<g>{time}</> | <lvl>{level}</> | <c>{extra[classname]}:{function}:{line}</> - {message}"
 # # https://buildmedia.readthedocs.org/media/pdf/loguru/latest/loguru.pdf
 logger.add(
     sys.stderr, level=os.getenv("LOGURU_LEVEL", "DEBUG"), format=logger_fmt
@@ -40,7 +38,13 @@ _CONFIGLOCALPATH = Path(os.getenv("CONFIG_LOCAL_PATH", _CONFIGLOCALPATH))
 
 from pydantic import (
     BaseModel,
-    Field, AliasPath, AliasChoices, field_validator, RootModel, AfterValidator, BeforeValidator
+    Field,
+    AliasPath,
+    AliasChoices,
+    field_validator,
+    RootModel,
+    AfterValidator,
+    BeforeValidator,
 )
 from pydantic.fields import FieldInfo
 
@@ -51,7 +55,7 @@ from pydantic_settings import (
     EnvSettingsSource,
     YamlConfigSettingsSource,
     InitSettingsSource,
-    DotEnvSettingsSource
+    DotEnvSettingsSource,
 )
 
 # secrets_dir='/var/run')
@@ -125,10 +129,12 @@ from pydantic_settings import (
 # export my_prefix_more_settings='{"foo": "x", "apple": 1}'
 # more_settings: SubModel = SubModel()
 
+
 class Redis(BaseModel):
     HOST: str = Field(default="127.0.0.1")
     HOST_IN_CLUSTER: Optional[str] = Field(default=None)
     PORT: int = Field(default=6379)
+
 
 class Gotify(BaseModel):
     APPNAME: str
@@ -136,12 +142,14 @@ class Gotify(BaseModel):
     BASE_URL_IN_CLUSTER: str
     TOKEN: str
 
+
 class UVICORN(BaseModel):
     port: int = Field(default=18891)
     app: str = Field(default="mipserver:app")
     host: str = Field(default="0.0.0.0")
     log_level: str = Field(default="info")
     reload: bool = Field(default=True)
+
 
 class GotifyList(RootModel):
     root: List[Gotify]
@@ -151,13 +159,16 @@ class PackageNameGithubRepo(BaseModel):
     packagename: str
     githubrepo: str
 
+
 class PackageNameGithubRepoList(RootModel):
     root: List[PackageNameGithubRepo]
+
 
 class Telegram(BaseModel):
     BOT_TOKEN: str
     BOT_CHATID: str
     URL_PREFIX: Literal["https://api.telegram.org/bot"] = "https://api.telegram.org/bot"
+
 
 class Mqtt(BaseModel):
     HOST: str = Field(default="127.0.0.1")
@@ -174,6 +185,7 @@ class Mqtt(BaseModel):
     #     # vinfo=ValidationInfo(config={'title': 'Mqtt'}, context=None, data={'HOST': 'mosquittoi.heidk8.elasticc.io', 'PORT': 1883, 'USERNAME': 'venom', 'PASSWORD': 'kaiGh5esgael3OuH'}, field_name='guggle')
     #
     #     return v
+
 
 # class MyEnvSettingsSource(EnvSettingsSource):
 #     def __init__(self,
@@ -226,7 +238,6 @@ class Mqtt(BaseModel):
 #         )
 
 
-
 class Settings(BaseSettings):
     # model_config = SettingsConfigDict(env_prefix='TAS_', case_sensitive=False, env_file='.env', env_file_encoding='utf-8')
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
@@ -245,7 +256,9 @@ class Settings(BaseSettings):
         yaml_file=[_CONFIGPATH, _CONFIGLOCALPATH],
     )
 
-    timezone: datetime.tzinfo = Field(alias="TIMEZONE")  #Annotated[datetime.tzinfo, BeforeValidator(lambda v: pytz.timezone(v))]
+    timezone: datetime.tzinfo = Field(
+        alias="TIMEZONE"
+    )  # Annotated[datetime.tzinfo, BeforeValidator(lambda v: pytz.timezone(v))]
 
     # redis: Redis = Field(alias="REDIS")
     mqtt: Mqtt = Field(alias="MQTT")
@@ -255,9 +268,9 @@ class Settings(BaseSettings):
 
     # HttpUrlString = Annotated[HttpUrl, AfterValidator(lambda v: str(v))]
 
-    @field_validator('timezone', mode="before")
+    @field_validator("timezone", mode="before")
     @classmethod
-    def validate_timezone(cls, v: Any, vinfo: ValidationInfo) -> None|datetime.tzinfo:
+    def validate_timezone(cls, v: Any, vinfo: ValidationInfo) -> None | datetime.tzinfo:
         logger.debug(f"VALIDATE TIMEZONE: {type(v)=} {v} {vinfo=}")
         # VALIDATE TIMEZONE: type(v)=<class 'str'> Europe/Berlin vinfo=ValidationInfo(config={'title': 'Settings', 'extra_fields_behavior': 'ignore', 'validate_default': True, 'validate_by_alias': True, 'validate_by_name': True}, context=None, data={}, field_name='timezone')
         return pytz.timezone(str(v))
@@ -274,19 +287,16 @@ class Settings(BaseSettings):
     def settings_customise_sources(
         cls,
         settings_cls: Type[BaseSettings],
-        init_settings: InitSettingsSource,  #type: ignore
-        env_settings: EnvSettingsSource,  #type: ignore
-        dotenv_settings: DotEnvSettingsSource,  #type: ignore
+        init_settings: InitSettingsSource,  # type: ignore
+        env_settings: EnvSettingsSource,  # type: ignore
+        dotenv_settings: DotEnvSettingsSource,  # type: ignore
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
         # return init_settings, MyEnvSettingsSource.from_other(env_settings), YamlConfigSettingsSource(settings_cls)
         return init_settings, env_settings, YamlConfigSettingsSource(settings_cls)
 
 
-
-
-
 settings: Settings = Settings()  # type: ignore
 
-if __name__ =="__main__":
+if __name__ == "__main__":
     pprint(settings.model_dump())

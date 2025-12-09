@@ -1,9 +1,11 @@
 import uvicorn
 
 from mipserver.config import settings
+
 # also sets loguru.logger defaults...
 
 from loguru import logger
+
 
 def main() -> None:
     logger.info(f"{__file__}::MAIN")
@@ -12,8 +14,9 @@ def main() -> None:
         host=settings.uvicorn.host,
         port=settings.uvicorn.port,
         log_level=settings.uvicorn.log_level,
-        reload=settings.uvicorn.reload
+        reload=settings.uvicorn.reload,
     )
+
 
 if __name__ == "__main__":
     main()

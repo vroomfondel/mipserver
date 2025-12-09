@@ -1,13 +1,13 @@
 -r requirements-local.txt
 
-pre-commit==4.2.*
+pre-commit==4.5.*
 
 # linting
-isort==6.0.*
-black==25.11.*
-mypy==1.18.*
+isort==7.0.*
+black==25.12.*
+mypy==1.19.*
 
-pytest==8.3.*
+pytest==9.0.*
 # needed for pytest
 httpx
 

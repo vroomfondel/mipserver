@@ -47,6 +47,7 @@ def test_package_json_invalid_package_returns_error(client: TestClient, monkeypa
 
     # Override the dependency in the FastAPI app
     from mipserver.app import app
+
     app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
     try:
@@ -57,7 +58,9 @@ def test_package_json_invalid_package_returns_error(client: TestClient, monkeypa
         app.dependency_overrides.clear()
 
 
-def test_package_json_uses_fresh_local_file(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_package_json_uses_fresh_local_file(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Map package name and force local_json path to exist and be fresh
 
     def fake_get_package_name_to_repo() -> Dict[str, str]:
@@ -65,8 +68,8 @@ def test_package_json_uses_fresh_local_file(client: TestClient, tmp_path: Path, 
 
     # Override the dependency in the FastAPI app
     from mipserver.app import app
-    app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
+    app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
     local_json = tmp_path / "py" / "demo" / "latest.json"
     local_json.parent.mkdir(parents=True, exist_ok=True)
@@ -77,7 +80,11 @@ def test_package_json_uses_fresh_local_file(client: TestClient, tmp_path: Path, 
     def fake_get_local_path_for_package_json_by_package_and_version(self: MIPServerHelper, mpy_version: Any, package_name: str, pversion: str) -> Path:  # type: ignore[override]
         return local_json
 
-    monkeypatch.setattr(MIPServerHelper, "get_local_path_for_package_json_by_package_and_version", fake_get_local_path_for_package_json_by_package_and_version)
+    monkeypatch.setattr(
+        MIPServerHelper,
+        "get_local_path_for_package_json_by_package_and_version",
+        fake_get_local_path_for_package_json_by_package_and_version,
+    )
 
     try:
         r = client.get("/package/py/demo/latest.json")
@@ -88,13 +95,13 @@ def test_package_json_uses_fresh_local_file(client: TestClient, tmp_path: Path, 
         app.dependency_overrides.clear()
 
 
-
 def test_package_json_git_pull_failure(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_get_package_name_to_repo() -> Dict[str, str]:
         return {"demo": "someone/repo"}
 
     # Override the dependency in the FastAPI app
     from mipserver.app import app
+
     app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
     # Ensure local json is missing so code proceeds to git pull
@@ -105,7 +112,11 @@ def test_package_json_git_pull_failure(client: TestClient, tmp_path: Path, monke
     def fake_ensure_git_repo_up_to_date(self: MIPServerHelper, repo_name: str, branch: str) -> Path | None:  # type: ignore[override]
         return None
 
-    monkeypatch.setattr(MIPServerHelper, "get_local_path_for_package_json_by_package_and_version", fake_get_local_path_for_package_json_by_package_and_version)
+    monkeypatch.setattr(
+        MIPServerHelper,
+        "get_local_path_for_package_json_by_package_and_version",
+        fake_get_local_path_for_package_json_by_package_and_version,
+    )
     monkeypatch.setattr(MIPServerHelper, "ensure_git_repo_up_to_date", fake_ensure_git_repo_up_to_date)
 
     try:
@@ -124,8 +135,8 @@ def test_package_json_generate_success(client: TestClient, tmp_path: Path, monke
 
     # Override the dependency in the FastAPI app
     from mipserver.app import app
-    app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
+    app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
 
     def fake_get_local_path_for_package_json_by_package_and_version(self: MIPServerHelper, mpy_version: Any, package_name: str, pversion: str) -> Path:  # type: ignore[override]
         return tmp_path / str(mpy_version) / package_name / f"{pversion}.json"
@@ -141,10 +152,15 @@ def test_package_json_generate_success(client: TestClient, tmp_path: Path, monke
         target_pkgjson.write_text(json.dumps(data))
         return target_pkgjson
 
-
-    monkeypatch.setattr(MIPServerHelper, "get_local_path_for_package_json_by_package_and_version", fake_get_local_path_for_package_json_by_package_and_version)
+    monkeypatch.setattr(
+        MIPServerHelper,
+        "get_local_path_for_package_json_by_package_and_version",
+        fake_get_local_path_for_package_json_by_package_and_version,
+    )
     monkeypatch.setattr(MIPServerHelper, "ensure_git_repo_up_to_date", fake_ensure_git_repo_up_to_date)
-    monkeypatch.setattr(MIPServerHelper, "generate_package_json_from_local_repo", fake_generate_package_json_from_local_repo)
+    monkeypatch.setattr(
+        MIPServerHelper, "generate_package_json_from_local_repo", fake_generate_package_json_from_local_repo
+    )
 
     try:
         r = client.get("/package/6/demo/latest.json")

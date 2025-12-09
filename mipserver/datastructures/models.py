@@ -4,13 +4,16 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator, model_serial
 
 from mipserver.datastructures.datatypes import SensorType
 
+
 class ErrorResponse(BaseModel):
     error: str
+
 
 class MIPServerFile(BaseModel):
     path: str  # e.g. "mein-paket/__init__.mpy"
     hash: str  # sha256 is there a type for that?!
     size: int
+
 
 class MIPServerFileL(BaseModel):
     path: str
@@ -24,6 +27,7 @@ class MIPServerFileL(BaseModel):
 class MIPServerPackageJson(BaseModel):
     # files: List[MIPServerFile]
     hashes: List[MIPServerFileL]
+
 
 # * using HTTP/2
 # * [HTTP/2] [1] OPENED stream for https://micropython.org/pi/v2/file/12/12a36a41
@@ -66,6 +70,7 @@ class MIPServerPackageJson(BaseModel):
 from mipserver import config
 from loguru import logger
 
+
 class MIPSRCPackageURLEntry(BaseModel):
     url_from: str
     url_to: str
@@ -84,7 +89,6 @@ class MIPSRCPackageURLEntry(BaseModel):
             return {"url_from": v[0], "url_to": v[1]}
 
         return None
-
 
 
 class MIPSRCPackageJson(BaseModel):
@@ -108,6 +112,7 @@ class MIPSRCPackageJson(BaseModel):
 # 	"createdAt": "2017-07-08T10:08:45.226565869+01:00"
 # }
 
+
 class Sensor(BaseModel):
     sensor: SensorType
 
@@ -119,14 +124,16 @@ class Item(BaseModel):
     tags: list[str] = []
     description: Union[str, None] = Field(default=None, json_schema_extra={"example": "A very nice Item"})
 
-    model_config = ConfigDict(json_schema_extra={
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Foo",
                 "description": "A very nice Item",
                 "price": 35.4,
                 "tax": 3.2,
             }
-        })
+        }
+    )
 
 
 #
@@ -171,4 +178,3 @@ class Item(BaseModel):
 # async def create_user(user_in: UserIn):
 #     user_saved = fake_save_user(user_in)
 #     return user_saved
-

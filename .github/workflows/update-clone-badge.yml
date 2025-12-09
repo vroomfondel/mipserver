@@ -27,6 +27,6 @@ jobs:
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_TOKEN: ${{ secrets.REPO_PRIV_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/update_badge.py

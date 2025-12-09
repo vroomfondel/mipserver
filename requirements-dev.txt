@@ -21,3 +21,4 @@ types-pytz>=2025.2
 types-cachetools
 types-requests>=2.32.4.20250913
 
+# types-fastapi

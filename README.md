@@ -1,8 +1,9 @@
-# mipserver
-
 [![mypy and pytests](https://github.com/vroomfondel/mipserver/actions/workflows/mypynpytests.yml/badge.svg)](https://github.com/vroomfondel/mipserver/actions/workflows/mypynpytests.yml)
 [![BuildAndPushMultiarch](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml/badge.svg)](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml)
-![Cumulative Clones](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
+![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
+[![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/mipserver?logo=docker)](https://hub.docker.com/r/xomoxcc/mipserver/tags)
+
+# mipserver
 
 Overview
 - mipserver is a lightweight, container-friendly HTTP service that accelerates and stabilizes MicroPython package deployment via mip.

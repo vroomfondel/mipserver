@@ -1,5 +1,12 @@
-# FROM python:3.13-bookworm
-FROM python:3.14-trixie
+ARG python_version=3.14
+ARG debian_version=trixie
+
+FROM python:${python_version}-${debian_version}
+
+# need to repeat args (without defaults) in this stage
+ARG python_version
+ARG debian_version
+
 
 # https://docs.docker.com/develop/develop-images/dockerfile_best-practices/
 
@@ -7,7 +14,7 @@ FROM python:3.14-trixie
 
 RUN apt update && \
     apt -y full-upgrade && \
-    apt -y install htop procps iputils-ping python3-pdfminer locales vim tini fonts-noto-core bind9-dnsutils acl && \
+    apt -y install htop procps iputils-ping locales vim tini bind9-dnsutils acl && \
     pip install --upgrade pip && \
     rm -rf /var/lib/apt/lists/*
 
@@ -70,7 +77,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-ENV PYTHONPATH="${PYTHONPATH}:/app"
+ENV PYTHONPATH=${PYTHONPATH:+${PYTHONPATH}:}/app
 
 ARG gh_ref=gh_ref_is_undefined
 ENV GITHUB_REF=$gh_ref

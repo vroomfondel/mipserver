@@ -61,8 +61,8 @@ if [ $# -eq 1 ] ; then
 fi
 
 
-
-docker "${docker_base_args[@]}" . > docker_build_local.log 2>&1 &
+# takes some extra time...
+# docker "${docker_base_args[@]}" . > docker_build_local.log 2>&1 &
 
 docker buildx "${docker_base_args[@]}" --platform linux/amd64,linux/aarch64 --push .
 

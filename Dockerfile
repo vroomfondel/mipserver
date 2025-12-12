@@ -64,12 +64,16 @@ RUN groupadd -g ${GID} -o ${UNAME} && \
 
 USER ${UNAME}
 
+
 COPY --chown=${UID}:${GID} requirements.txt requirements-local.txt /
 RUN pip3 install --no-cache-dir --upgrade -r /requirements-local.txt
 
+# ADD --chown=${UID}:${GID} "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+
 COPY --chown=${UID}:${GID} mipserver /app/mipserver
 COPY --chown=${UID}:${GID} main.py /app/
-# COPY --chown=${UID}:${GID} config.local.yaml /app/
+
+# RUN rm skipcache
 
 WORKDIR /app
 
@@ -78,6 +82,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 ENV PYTHONPATH=${PYTHONPATH:+${PYTHONPATH}:}/app
+ENV PATH="/home/pythonuser/.local/bin:$PATH"
 
 ARG gh_ref=gh_ref_is_undefined
 ENV GITHUB_REF=$gh_ref
@@ -97,8 +102,6 @@ ENV FORWARDED_ALLOW_IPS=$forwarded_allow_ips
 # ENV TINI_SUBREAPER=yes
 # ENV TINI_KILL_PROCESS_GROUP=yes
 # ENV TINI_VERBOSITY=3
-
-ENV PATH="/home/pythonuser/.local/bin:$PATH"
 
 EXPOSE 18891
 

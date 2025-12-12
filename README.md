@@ -3,6 +3,8 @@
 ![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
 [![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/mipserver?logo=docker)](https://hub.docker.com/r/xomoxcc/mipserver/tags)
 
+![Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png](Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png)
+
 # mipserver
 
 Overview

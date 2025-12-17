@@ -1,9 +1,8 @@
 [![mypy and pytests](https://github.com/vroomfondel/mipserver/actions/workflows/mypynpytests.yml/badge.svg)](https://github.com/vroomfondel/mipserver/actions/workflows/mypynpytests.yml)
 [![BuildAndPushMultiarch](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml/badge.svg)](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml)
 ![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
-[![Docker Pulls](https://img.shields.io/docker/pulls/xomoxcc/mipserver?logo=docker)](https://hub.docker.com/r/xomoxcc/mipserver/tags)
 
-[![Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png](Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png)](https://hub.docker.com/r/xomoxcc/mipserver/tags)
+[![https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png](https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png)](https://github.com/vroomfondel/mipserver)
 
 # mipserver
 
@@ -138,3 +137,8 @@ regard/pay attention to comments in regards to that throughout the codebase / fi
 
 Inspiration, code snippets, etc.
 * please see comments in files for that
+
+
+## ⚠️ Disclaimer
+
+This is a development/experimental project. For production use, review security settings, customize configurations, and test thoroughly in your environment. Provided "as is" without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software. Use at your own risk.

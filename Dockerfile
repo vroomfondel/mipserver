@@ -1,5 +1,5 @@
 ARG python_version=3.14
-ARG debian_version=trixie
+ARG debian_version=slim-trixie
 
 FROM python:${python_version}-${debian_version}
 

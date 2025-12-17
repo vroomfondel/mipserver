@@ -5,7 +5,7 @@ medir=$(realpath "${medir}")
 cd "${medir}" || exit 123
 
 python_version=3.14
-debian_version=trixie
+debian_version=slim-trixie
 
 DOCKER_IMAGE=xomoxcc/mipserver:python-${python_version}-${debian_version}
 

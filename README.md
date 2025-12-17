@@ -2,7 +2,7 @@
 [![BuildAndPushMultiarch](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml/badge.svg)](https://github.com/vroomfondel/mipserver/actions/workflows/buildmultiarchandpush.yml)
 ![Cumulative Clones](https://img.shields.io/endpoint?logo=github&url=https://gist.githubusercontent.com/vroomfondel/c2a4e6ab3042d0a3b866de993fc8c896/raw/mipserver_clone_count.json)
 
-[![https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png](https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png)](https://github.com/vroomfondel/mipserver)
+[![https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png](https://github.com/vroomfondel/mipserver/raw/main/Gemini_Generated_Image_mipserver_5jsu1b5jsu1b5jsu_250x250.png)](https://hub.docker.com/r/xomoxcc/mipserver/tags)
 
 # mipserver
 

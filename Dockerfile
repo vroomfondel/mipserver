@@ -64,6 +64,9 @@ RUN groupadd -g ${GID} -o ${UNAME} && \
 
 USER ${UNAME}
 
+#ENV PYTHONPATH=${PYTHONPATH:+${PYTHONPATH}:}/app
+ENV PYTHONPATH=/app
+ENV PATH="/home/pythonuser/.local/bin:$PATH"
 
 COPY --chown=${UID}:${GID} requirements.txt requirements-local.txt /
 RUN pip3 install --no-cache-dir --upgrade -r /requirements-local.txt
@@ -81,9 +84,6 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-#ENV PYTHONPATH=${PYTHONPATH:+${PYTHONPATH}:}/app
-ENV PYTHONPATH=/app
-ENV PATH="/home/pythonuser/.local/bin:$PATH"
 
 ARG gh_ref=gh_ref_is_undefined
 ENV GITHUB_REF=$gh_ref

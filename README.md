@@ -45,7 +45,7 @@ Below is a concise guide to the available targets and typical workflows, based o
 Prerequisites
 - GNU Make
 - Docker (for building/running the container)
-- Python 3.13 (optional locally; CI skips venv creation)
+- Python 3.14 (optional locally; CI skips venv creation)
 
 Conventions
 - Many targets activate a local virtualenv automatically unless GITHUB_RUN_ID is set (in CI). The venv lives under .venv/.

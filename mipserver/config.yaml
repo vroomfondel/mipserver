@@ -7,6 +7,11 @@ UVICORN:
 
 TIMEZONE: "Europe/Berlin"
 
+CACHE:
+  # lifetime of a generated package.json in minutes; 0 => always re-check against git.
+  # override: ENV CACHE__FRESHNESS_MINUTES=... or "python main.py --cache-freshness-minutes ..."
+  freshness_minutes: 30
+
 MQTT:
   USERNAME: "funk"
   PASSWORD: "madina"

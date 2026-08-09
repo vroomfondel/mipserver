@@ -100,6 +100,17 @@ Quick start
 Configuration
 - Default configuration lives in mipserver/config.yaml.
 - To customize without modifying the default, create mipserver/config.local.yaml. Many targets will create an empty file if it does not exist.
+- Settings can be overridden by environment variables using "__" as the nesting delimiter, e.g. UVICORN__PORT=8080.
+
+Cache freshness
+- A generated package.json is served from the cache without re-checking git for CACHE.freshness_minutes minutes (default: 30). Use 0 to re-check git on every request.
+- Override, in increasing precedence:
+  - mipserver/config.yaml (or config.local.yaml):
+      CACHE:
+        freshness_minutes: 30
+  - environment: CACHE__FRESHNESS_MINUTES=5
+  - command line: python main.py --cache-freshness-minutes 5
+- The content-addressed blobs under /file/... are immutable and have no expiry; only the package index json is refreshed.
 
 Notes
 - CI behavior: When GITHUB_RUN_ID is set, venv creation and package installation in install are skipped by design.

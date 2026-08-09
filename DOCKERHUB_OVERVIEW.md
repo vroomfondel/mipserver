@@ -43,7 +43,7 @@ Below is a concise guide to the available targets and typical workflows, based o
 Prerequisites
 - GNU Make
 - Docker (for building/running the container)
-- Python 3.13 (optional locally; CI skips venv creation)
+- Python 3.14 (optional locally; CI skips venv creation)
 
 Conventions
 - Many targets activate a local virtualenv automatically unless GITHUB_RUN_ID is set (in CI). The venv lives under .venv/.
@@ -98,6 +98,25 @@ Quick start
 Configuration
 - Default configuration lives in mipserver/config.yaml.
 - To customize without modifying the default, create mipserver/config.local.yaml. Many targets will create an empty file if it does not exist.
+- Settings can be overridden by environment variables using "__" as the nesting delimiter, e.g. UVICORN__PORT=8080. This is usually the most convenient way to configure the container.
+
+Cache freshness
+- A generated package.json is served from the cache without re-checking git for CACHE.freshness_minutes minutes (default: 30). Use 0 to re-check git on every request.
+- Override, in increasing precedence:
+  - mipserver/config.yaml (or config.local.yaml):
+      CACHE:
+        freshness_minutes: 30
+  - environment: CACHE__FRESHNESS_MINUTES=5
+  - command line: python main.py --cache-freshness-minutes 5
+- For the container the environment variable is the natural choice:
+  docker run --network=host -it --rm \
+    --name mipserverephemeral \
+    -p 18891:18891 \
+    -e CACHE__FRESHNESS_MINUTES=5 \
+    -v $(pwd)/mipserver/config.local.yaml:/app/mipserver/config.local.yaml \
+    -v $(pwd)/.cache:/app/.cache \
+    xomoxcc/mipserver:latest
+- The content-addressed blobs under /file/... are immutable and have no expiry; only the package index json is refreshed.
 
 Notes
 - CI behavior: When GITHUB_RUN_ID is set, venv creation and package installation in install are skipped by design.

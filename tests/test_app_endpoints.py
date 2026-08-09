@@ -95,6 +95,46 @@ def test_package_json_uses_fresh_local_file(
         app.dependency_overrides.clear()
 
 
+def test_package_json_zero_freshness_bypasses_fresh_local_file(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Same setup as test_package_json_uses_fresh_local_file, but freshness=0 must force a git re-check
+    from mipserver.config import settings
+
+    def fake_get_package_name_to_repo() -> Dict[str, str]:
+        return {"demo": "someone/repo"}
+
+    from mipserver.app import app
+
+    app.dependency_overrides[appmod.get_package_name_to_repo] = fake_get_package_name_to_repo
+
+    local_json = tmp_path / "py" / "demo" / "latest.json"
+    local_json.parent.mkdir(parents=True, exist_ok=True)
+    local_json.write_text(json.dumps({"hashes": [["demo.mpy", "a" * 64]]}))
+
+    def fake_get_local_path_for_package_json_by_package_and_version(self: MIPServerHelper, mpy_version: Any, package_name: str, pversion: str) -> Path:  # type: ignore[override]
+        return local_json
+
+    def fake_ensure_git_repo_up_to_date(self: MIPServerHelper, repo_name: str, branch: str) -> Path | None:  # type: ignore[override]
+        return None
+
+    monkeypatch.setattr(
+        MIPServerHelper,
+        "get_local_path_for_package_json_by_package_and_version",
+        fake_get_local_path_for_package_json_by_package_and_version,
+    )
+    monkeypatch.setattr(MIPServerHelper, "ensure_git_repo_up_to_date", fake_ensure_git_repo_up_to_date)
+    monkeypatch.setattr(settings.cache, "freshness_minutes", 0)
+
+    try:
+        r = client.get("/package/py/demo/latest.json")
+        # cache was skipped -> code proceeded to git, which we stubbed to fail
+        assert r.status_code == 500
+        assert "git pull failed" in r.json()["error"]
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_package_json_git_pull_failure(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_get_package_name_to_repo() -> Dict[str, str]:
         return {"demo": "someone/repo"}

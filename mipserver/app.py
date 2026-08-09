@@ -1,9 +1,28 @@
+"""FastAPI application implementing the ``mip`` package index protocol.
+
+Routes, in the order the ``mip`` client uses them:
+
+* ``GET /package/{mpy_version}/{package_name}/{pversion}.json`` — the package index.
+  ``mpy_version`` selects sources vs. bytecode, ``pversion`` is a **git branch**
+  rather than a tag, with ``"latest"`` standing for the default branch.
+* ``GET /file/{hash[:2]}/{hash}`` — one content-addressed blob.
+
+``GET /`` and ``GET /echo`` exist for health checks and request debugging; anything
+else falls through to the catch-all. Note that failures are reported as HTTP 500
+with an :class:`~mipserver.datastructures.models.ErrorResponse` body, including
+cases that would normally warrant a 4xx.
+
+The heavy lifting is delegated to :class:`~mipserver.Helper.MIPServerHelper`; this
+module only resolves the request, applies the cache-freshness rule and turns
+results into responses.
+"""
+
 import os
 from contextlib import asynccontextmanager, contextmanager
 
 from os import stat_result
 from pathlib import Path
-from typing import Annotated, List, Any, Dict, Union, AsyncGenerator, Generator, Optional
+from typing import Annotated, AsyncGenerator, Dict, Generator, List, Mapping, Optional, Tuple, Union
 
 from mipserver.config import settings
 
@@ -30,7 +49,14 @@ from loguru import logger
 from mipserver import Helper
 from mipserver.Helper import MIPServerHelper
 from mipserver.datastructures.datatypes import SensorType, MPYPath
-from mipserver.datastructures.models import MIPServerPackageJson, MIPServerFile, ErrorResponse
+from mipserver.datastructures.models import (
+    EchoResponse,
+    ErrorResponse,
+    MIPServerFile,
+    MIPServerPackageJson,
+    RequestLog,
+    UrlComponents,
+)
 
 # Defaults for upstream repository that hosts MicroPython packages
 GITHUB_REPO_URL_BASE = "https://github.com"  # /micropython/micropython-lib.git"
@@ -45,7 +71,16 @@ SERVER_CACHE_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 def error_response(error_msg: str, status_code: int = 500) -> JSONResponse:
-    """Helper um ErrorResponse Models als JSONResponse zurückzugeben"""
+    """Wrap an error message into an `ErrorResponse` body.
+
+    Args:
+        error_msg: Message to report to the client.
+        status_code: HTTP status to answer with. The app deliberately defaults to
+            500 even for client-side mistakes.
+
+    Returns:
+        The ready-to-return JSON response.
+    """
     error = ErrorResponse(error=error_msg)
     return JSONResponse(content=error.model_dump(), status_code=status_code)
 
@@ -58,7 +93,14 @@ PACKAGE_NAME_TO_REPO: Dict[str, str] = {
 
 
 def get_package_name_to_repo() -> Dict[str, str]:
-    """Dependency function to inject package_name_to_repo dictionary"""
+    """Provide the package-to-repository mapping as a FastAPI dependency.
+
+    Exists as a dependency rather than a direct module lookup so tests can swap the
+    mapping via ``app.dependency_overrides``.
+
+    Returns:
+        Maps package name to ``owner/repo``.
+    """
     logger.debug("app::get_package_name_to_repo")
     return PACKAGE_NAME_TO_REPO
 
@@ -81,7 +123,7 @@ You will be able to:
 * **Read users** (_not implemented_).
 """
 
-__app_tags_metadata: List[dict[str, Any]] | None = [
+__app_tags_metadata: Optional[List[Dict[str, object]]] = [
     {
         "name": "event",
         "description": "Operations with users. The **login** logic is also here.",
@@ -101,6 +143,16 @@ __app_tags_metadata: List[dict[str, Any]] | None = [
 # app = FastAPI(default_response_class=ORJSONResponse)
 @contextmanager
 def mylifespan_sync(_app: FastAPI) -> Generator[None, None]:
+    """Application lifespan: run startup, hand control to the server, then clean up.
+
+    Both halves are currently log-only.
+
+    Args:
+        _app: The application being started.
+
+    Yields:
+        Once, while the application is serving.
+    """
     # TODO preload defined packages from github...
     title: str = getattr(_app, "title", "UnknownApp")
     # _app.title  # gives mypy goosebumps. ANNOYING!!!!
@@ -112,7 +164,14 @@ def mylifespan_sync(_app: FastAPI) -> Generator[None, None]:
 
 @asynccontextmanager
 async def mylifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
-    """Async wrapper für den synchronen Context-Manager"""
+    """Async wrapper around the synchronous context manager.
+
+    Args:
+        _app: The application being started.
+
+    Yields:
+        Once, while the application is serving.
+    """
     # also, mypy does not know, FastAPI can also digest sync-contextmanager... BLARGH!
     with mylifespan_sync(_app):
         yield
@@ -143,6 +202,12 @@ app = FastAPI(
 
 
 def is_in_cluster() -> bool:
+    """Detect whether the process runs inside a Kubernetes pod.
+
+    Returns:
+        ``True`` if a service-account directory is mounted *and* the Kubernetes
+        service environment variable is set.
+    """
     sa: Path = Path("/var/run/secrets/kubernetes.io/serviceaccount")
     if sa.exists() and sa.is_dir():
         return os.getenv("KUBERNETES_SERVICE_HOST") is not None
@@ -150,19 +215,43 @@ def is_in_cluster() -> bool:
 
 
 @app.get("/")
-async def root() -> Dict:
+async def root() -> Dict[str, str]:
+    """Answer a liveness probe.
+
+    Returns:
+        A fixed greeting.
+    """
     return {"message": "Hello World"}
 
 
-def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
+def do_request_log(request: Request, extra: Optional[Mapping[str, str]] = None) -> RequestLog:
+    """Collect the interesting parts of a request for logging and for ``/echo``.
+
+    The full URL is rebuilt by hand because behind a reverse proxy the host and port
+    of ``request.url`` may be missing; the ASGI scope is used as the fallback.
+
+    Args:
+        request: The incoming request.
+        extra: Additional route-specific values to log, e.g. the parsed path
+            parameters. Not part of the returned model.
+
+    Returns:
+        The collected request data.
+
+    Raises:
+        AssertionError: If the ASGI server did not report a client address.
+    """
+    if extra:
+        logger.debug(f"do_request_log::{extra=}")
+
     hs: Headers = request.headers
     request_url = str(request.url)
 
-    # Port explizit auslesen
-    port = request.url.port
-    hostname = request.url.hostname
-    scheme = request.url.scheme
-    # Vollständige URL mit Port
+    # read the port explicitly
+    port: Optional[int] = request.url.port
+    hostname: Optional[str] = request.url.hostname
+    scheme: str = request.url.scheme
+    # full URL including the port
     request_url_with_port = f"{scheme}://{hostname}:{port}{request.url.path}"
     if request.url.query:
         request_url_with_port += f"?{request.url.query}"
@@ -170,16 +259,13 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     path: str = request.url.path
     assert request.client is not None, "request.client is None and that is not allowed here..."
     remote_ip: str = request.client.host
-    heads: dict = {}
-
-    if kwargs:
-        if "file_path" in kwargs:
-            file_path = kwargs["file_path"]
-            # logger.debug(f"{type(file_path)=} {file_path=}")
+    heads: Dict[str, str] = {}
 
     for hk in hs.keys():
         # logger.debug(f"RequestHeader[{hk}]: {hs.get(hk)}")
-        heads[hk] = hs.get(hk)
+        # __getitem__ instead of get(): the key comes from keys(), so it is present,
+        # and both return the first value when a header appears more than once.
+        heads[hk] = hs[hk]
 
     # logger.debug(f"request.url = {request.url}")
     # logger.debug(f"request.url.port = {request.url.port}")
@@ -188,20 +274,20 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     # logger.debug(f"request.url.netloc = {request.url.netloc}")
     # logger.debug(f"Host header = {hs.get('host')}")
 
-    # Hole Port aus ASGI Scope
-    server_info = request.scope.get("server")
+    # take the port from the ASGI scope
+    server_info: Optional[Tuple[str, Optional[int]]] = request.scope.get("server")
 
     # logger.debug(f"request.scope = {server_info}")
 
-    server_host = None
-    server_port = None
-    full_url = None
+    server_host: Optional[str] = None
+    server_port: Optional[int] = None
+    full_url: str
 
     if server_info:
         server_host, server_port = server_info
-        logger.debug(f"Server aus Scope: {server_host}:{server_port}")
+        logger.debug(f"server from scope: {server_host}:{server_port}")
 
-    # Baue URL mit korrektem Port
+    # build the URL with the correct port
     scheme = request.url.scheme
     hostname = request.url.hostname or server_host if server_info else "localhost"
     port = request.url.port or server_port
@@ -214,35 +300,40 @@ def do_request_log(request: Request, **kwargs: Optional[Any]) -> Dict:
     if request.url.query:
         full_url += f"?{request.url.query}"
 
-    ret: dict = {
-        "remote_ip": remote_ip,
-        "headers": heads,
-        "request_url": request_url,
-        "request_path": path,
-        "request_url_full": full_url,
-        "url_components": {
-            "port": request.url.port,
-            "hostname": request.url.hostname,
-            "netloc": request.url.netloc,
-            "scheme": request.url.scheme,
-        },
-        "server_scope": request.scope.get("server"),
-    }
-
-    return ret
+    return RequestLog(
+        remote_ip=remote_ip,
+        headers=heads,
+        request_url=request_url,
+        request_path=path,
+        request_url_full=full_url,
+        url_components=UrlComponents(
+            port=request.url.port,
+            hostname=request.url.hostname,
+            netloc=request.url.netloc,
+            scheme=request.url.scheme,
+        ),
+        server_scope=server_info,
+    )
 
 
 @app.get("/echo")
-async def echo(request: Request) -> Dict:
+async def echo(request: Request) -> EchoResponse:
+    """Mirror the request back to the caller for debugging.
+
+    Args:
+        request: The incoming request.
+
+    Returns:
+        The request log plus the parsed query parameters.
+    """
     logger.debug("RECEIVED REQUEST")
 
     query_params: Dict[str, str] = dict(request.query_params)
 
-    ret: Dict = do_request_log(request, **query_params)
+    request_log: RequestLog = do_request_log(request, extra=query_params)
+    ret: EchoResponse = EchoResponse(**request_log.model_dump(), query_params=query_params)
 
-    ret["query_params"] = query_params
-
-    logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
+    logger.debug(Helper.get_pretty_dict_json_no_sort(ret.model_dump()))
     return ret
 
 
@@ -262,9 +353,29 @@ async def get_package_json(
     package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
     request: Request,
 ) -> MIPServerPackageJson | Response:
+    """Serve the package index for one package, generating it when stale.
 
-    ret: Dict = do_request_log(request, package_name=package_name, mpy_version=mpy_version.value, pversion=pversion)
-    # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
+    A cached index is returned as-is while it is younger than
+    ``settings.cache.freshness_minutes``. Otherwise the mapped repository is
+    updated and the index regenerated, cross-compiling to ``.mpy`` when bytecode
+    was requested.
+
+    Args:
+        mpy_version: ``"py"`` to ship sources, otherwise the mpy format version.
+        package_name: Package name; must be present in ``package_name_to_repo``.
+        pversion: Requested version, which is really the git branch;
+            ``"latest"`` means the default branch.
+        package_name_to_repo: Injected package-to-repository mapping.
+        request: The incoming request, used for logging.
+
+    Returns:
+        A `FileResponse` carrying the index json, or an error response with HTTP
+        500 if the package is unknown, the git update failed or generation failed.
+    """
+    do_request_log(
+        request,
+        extra={"package_name": package_name, "mpy_version": mpy_version.value, "pversion": pversion},
+    )
 
     # mpy_version: "py" or mpy-file-version (.e.g. "6")
     # pversion: "latest" or "1.5.0" or whatever -> this actually means the branch and not a tag/version on the main/master-branch; in case of "latest", it is the main branch
@@ -293,21 +404,23 @@ async def get_package_json(
         mpy_version=mpy_version, package_name=package_name, pversion=pversion
     )
 
-    thirty_minutes_ago: datetime.datetime = datetime.datetime.now() - datetime.timedelta(minutes=30)
+    # freshness comes from settings (config.yaml | ENV CACHE__FRESHNESS_MINUTES | CLI --cache-freshness-minutes)
+    freshness_minutes: float = settings.cache.freshness_minutes
+    fresh_since: datetime.datetime = datetime.datetime.now() - datetime.timedelta(minutes=freshness_minutes)
 
     if local_json.exists():
         lms: stat_result = local_json.stat()
 
-        if lms.st_ctime >= thirty_minutes_ago.timestamp():
+        if lms.st_ctime >= fresh_since.timestamp():
             logger.debug(
                 f"\tReturning {local_json=} from {datetime.datetime.fromtimestamp(lms.st_ctime, settings.timezone)}"
             )
             return FileResponse(local_json, media_type="application/json")
 
-    logger.debug(f"Have to check for updates on git...")
+    logger.debug(f"Have to check for updates on git... ({freshness_minutes=})")
     gitrepopath: Path | None = msh.ensure_git_repo_up_to_date(
         repo_name=reponame, branch=pversion
-    )  # pversion sollte meist "latest" sein
+    )  # pversion is usually "latest"
 
     if not gitrepopath:
         return error_response("cannot generate package -> git pull failed")
@@ -331,12 +444,25 @@ async def get_file(
     short_hash: Annotated[str, FPath(..., min_length=64, max_length=64)],
     package_name_to_repo: Annotated[Dict[str, str], Depends(get_package_name_to_repo)],
 ) -> Response:
+    """Serve one content-addressed blob from the file store.
 
-    ret: Dict = do_request_log(request, short_hash_2=short_hash_2, short_hash=short_hash)
+    Args:
+        request: The incoming request, used for logging.
+        short_hash_2: First two characters of the digest, i.e. the shard directory.
+        short_hash: The full hex-encoded sha256 digest.
+        package_name_to_repo: Injected package-to-repository mapping; only used to
+            construct the helper.
+
+    Returns:
+        A `FileResponse` with ``application/octet-stream``, or an error response with
+        HTTP 500 if the blob is unknown.
+
+    Raises:
+        AssertionError: If ``short_hash_2`` is not the prefix of ``short_hash``.
+    """
+    do_request_log(request, extra={"short_hash_2": short_hash_2, "short_hash": short_hash})
 
     assert short_hash_2 == short_hash[:2]
-
-    # logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
 
     msh: MIPServerHelper = MIPServerHelper(
         server_cache_root=SERVER_CACHE_ROOT, package_name_to_repo=package_name_to_repo
@@ -359,9 +485,18 @@ async def get_file(
 
 @app.get("/{whatever:path}")
 async def whatever(whatever: Annotated[str, FPath(...)], request: Request) -> Response:
-    logger.debug("WHATEVER")
-    ret: Dict = do_request_log(request, whatever=whatever)
+    """Catch every path no other route matched.
 
-    logger.debug(Helper.get_pretty_dict_json_no_sort(ret))
+    Args:
+        whatever: The unmatched path.
+        request: The incoming request, logged in full to aid debugging.
+
+    Returns:
+        An error response with HTTP 500 and the message ``"UNKNOWN"``.
+    """
+    logger.debug("WHATEVER")
+    ret: RequestLog = do_request_log(request, extra={"whatever": whatever})
+
+    logger.debug(Helper.get_pretty_dict_json_no_sort(ret.model_dump()))
 
     return error_response("UNKNOWN")

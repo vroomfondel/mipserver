@@ -1,4 +1,4 @@
-.PHONY: tests help install venv lint dstart isort tcheck build commit-checks prepare
+.PHONY: tests help install venv lint lint-check dstart isort tcheck build commit-checks prepare
 SHELL := /usr/bin/bash
 .ONESHELL:
 
@@ -6,6 +6,7 @@ help:
 	@printf "\ninstall\n\tinstall requirements\n"
 	@printf "\nisort\n\tmake isort import corrections\n"
 	@printf "\nlint\n\tmake linter check with black\n"
+	@printf "\nlint-check\n\treport black/isort findings without rewriting any file\n"
 	@printf "\ntcheck\n\tmake static type checks with mypy\n"
 	@printf "\ntests\n\tLaunch tests\n"
 	@printf "\nprepare\n\tLaunch tests and commit-checks\n"
@@ -16,6 +17,16 @@ help:
 
 # check for "CI" not in os.environ || "GITHUB_RUN_ID" not in os.environ
 venv_activated=if [ -z $${VIRTUAL_ENV+x} ] && [ -z $${GITHUB_RUN_ID+x} ] ; then printf "activating venv...\n" ; source .venv/bin/activate ; else printf "venv already activated or GITHUB_RUN_ID=$${GITHUB_RUN_ID} is set\n"; fi
+
+# Formatters only ever run over our own sources -- same set mypy checks in tcheck, plus tests.
+# A bare "." would descend into .cache/ (the git checkouts of the repos we serve; isort does
+# not honour .gitignore by default and would rewrite ~26 files in there) and into the
+# gitignored *.local.* scratch files, which hold real secrets and must not be touched.
+SOURCES=*.py mipserver tests
+# --profile black -l 120: without it isort defaults to 79 columns and a non-black multiline
+# style, so isort and black would keep undoing each other's work.
+ISORT_ARGS=--profile black -l 120 --skip-gitignore --extend-skip-glob "*.local.*"
+BLACK_ARGS=-l 120 --extend-exclude "\.local\."
 
 install: venv
 
@@ -38,7 +49,7 @@ tests: venv
 
 lint: venv
 	@$(venv_activated)
-	black -l 120 .
+	black $(BLACK_ARGS) $(SOURCES)
 
 dstart:
 	@# map config.local.yaml from current workdirectory into container
@@ -58,7 +69,17 @@ dstart:
 
 isort: venv
 	@$(venv_activated)
-	isort .
+	isort $(ISORT_ARGS) $(SOURCES)
+	@# isort leaves blank-line residue where it lifted imports out of the file body,
+	@# so let black settle the result -- otherwise "make isort" leaves the tree lint-dirty.
+	black $(BLACK_ARGS) $(SOURCES)
+
+# non-destructive counterpart of lint/isort: reports, changes nothing. Same checks
+# pre-commit runs, so use it before committing if you do not want files rewritten.
+lint-check: venv
+	@$(venv_activated)
+	black $(BLACK_ARGS) --check --diff $(SOURCES)
+	isort $(ISORT_ARGS) --check-only --diff $(SOURCES)
 
 tcheck: venv
 	@$(venv_activated)

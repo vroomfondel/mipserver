@@ -51,15 +51,23 @@ lint: venv
 	@$(venv_activated)
 	black $(BLACK_ARGS) $(SOURCES)
 
+# Rootless podman maps the host user to root inside the container, so the
+# bind-mounted .cache shows up as root-owned while the server runs as
+# pythonuser (1200) - git then refuses the repos there ("dubious ownership").
+# keep-id maps the host user to 1200:1201 instead, same as startmipserver.sh.
+# Podman-only option: real docker would reject it, so only set it for podman
+# (also when `docker` is podman's docker emulation).
+DSTART_USERNS := $(shell docker --version 2>/dev/null | grep -qi podman && echo "--userns=keep-id:uid=1200,gid=1201")
+
 dstart:
 	@# map config.local.yaml from current workdirectory into container
 	@if ! [ -e .cache ]; then echo creating .cache ; mkdir .cache ; else echo already exists .cache; fi
-	@if ! [ -e mipserver/config.local.yaml ] ; then creating empty mipserver/config.local.yaml ; touch mipserver/config.local.yaml ; fi
+	@if ! [ -e mipserver/config.local.yaml ] ; then echo creating empty mipserver/config.local.yaml ; touch mipserver/config.local.yaml ; fi
 	@echo "Setting ACLs for host user $$(id -u):$$(id -g)"
 	@setfacl -R -m u:$$(id -u):rwx,g:$$(id -g):rwx -d -m u:$$(id -u):rwx,g:$$(id -g):rwx .cache
 	@echo "Setting ACLs for container user 1200:1201"
 	@setfacl -R -m u:1200:rwx,g:1201:rwx -d -m u:1200:rwx,g:1201:rwx .cache
-	docker run --network=host -it --rm --name mipserverephemeral -p 18891:18891 \
+	docker run --network=host $(DSTART_USERNS) -it --rm --name mipserverephemeral -p 18891:18891 \
 		-v $$(pwd)/mipserver/config.local.yaml:/app/mipserver/config.local.yaml \
 		-v $$(pwd)/.cache:/app/.cache \
 		xomoxcc/mipserver:latest

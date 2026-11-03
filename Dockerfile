@@ -62,6 +62,13 @@ ARG UNAME=pythonuser
 RUN groupadd -g ${GID} -o ${UNAME} && \
     useradd -m -u ${UID} -g ${GID} -o -s /bin/bash ${UNAME}
 
+# The repo cache under /app/.cache is usually a bind mount, and depending on how
+# the container is started (rootless podman without keep-id, docker with a
+# different host uid, k8s volumes) its owner is not ${UNAME}. git >= 2.35.2 then
+# refuses every command there with "detected dubious ownership" and the server
+# answers 500. The cache only ever holds repos this server cloned itself.
+RUN git config --system --add safe.directory '*'
+
 USER ${UNAME}
 
 #ENV PYTHONPATH=${PYTHONPATH:+${PYTHONPATH}:}/app

@@ -1,0 +1,11 @@
+# Allowlist: only what Dockerfile COPY/ADDs (keeps docker-config/, .git, .venv etc. out of the build context)
+*
+!requirements.txt
+!requirements-local.txt
+!mipserver/**
+!main.py
+**/__pycache__
+**/*.local
+**/*.local.*
+**/.*
+**/docker-config

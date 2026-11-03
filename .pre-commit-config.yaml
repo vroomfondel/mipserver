@@ -7,7 +7,7 @@ repos:
       - id: check-yaml
 
   - repo: https://github.com/psf/black
-    rev: 25.11.0
+    rev: 26.10.1
     hooks:
       - id: black
         # It is recommended to specify the latest version of Python
@@ -18,7 +18,7 @@ repos:
         args: [--diff, --check, "-l 120"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+    rev: v2.4.1
     hooks:
       - id: mypy
         exclude: "(.venv|tests|venv)"
